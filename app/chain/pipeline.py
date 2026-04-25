@@ -1,0 +1,65 @@
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
+from langchain_core.language_models import BaseChatModel
+from langchain_core.retrievers import BaseRetriever
+from langchain_core.documents import Document
+from langchain_core.messages import BaseMessage
+from typing import List, AsyncIterator
+
+from app.chain.prompts import chat_prompt
+from app.core.config import settings
+
+
+def _get_llm() -> BaseChatModel:
+    if settings.LLM_PROVIDER == "anthropic":
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(
+            model=settings.LLM_MODEL or "claude-sonnet-4-6",
+            api_key=settings.ANTHROPIC_API_KEY,
+        )
+    from langchain_openai import ChatOpenAI
+    return ChatOpenAI(
+        model=settings.LLM_MODEL or "gpt-4o",
+        api_key=settings.OPENAI_API_KEY,
+    )
+
+
+def _format_docs(docs: List[Document]) -> str:
+    if not docs:
+        return "No hay documentos cargados."
+    return "\n\n".join(
+        f"[Fuente: {doc.metadata.get('source', 'desconocido')}]\n{doc.page_content}"
+        for doc in docs
+    )
+
+
+def build_chain(retriever: BaseRetriever):
+    llm = _get_llm()
+    chain = (
+        RunnablePassthrough.assign(
+            context=lambda x: _format_docs(retriever.invoke(x["question"]))
+        )
+        | chat_prompt
+        | llm
+        | StrOutputParser()
+    )
+    return chain
+
+
+async def invoke_chain(
+    retriever: BaseRetriever,
+    question: str,
+    history: List[BaseMessage],
+) -> str:
+    chain = build_chain(retriever)
+    return await chain.ainvoke({"question": question, "history": history})
+
+
+async def stream_chain(
+    retriever: BaseRetriever,
+    question: str,
+    history: List[BaseMessage],
+) -> AsyncIterator[str]:
+    chain = build_chain(retriever)
+    async for chunk in chain.astream({"question": question, "history": history}):
+        yield chunk
