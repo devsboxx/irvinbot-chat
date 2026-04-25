@@ -72,8 +72,25 @@ async def stream_message(
     db: Session = Depends(get_db),
 ):
     async def event_generator():
-        async for chunk in chat_service.stream_message(db, session_id, user_id, payload.message):
-            yield f"data: {json.dumps({'chunk': chunk})}\n\n"
-        yield "data: [DONE]\n\n"
+        try:
+            async for chunk in chat_service.stream_message(db, session_id, user_id, payload.message):
+                yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+        except Exception as exc:
+            error_msg = _llm_error_message(exc)
+            yield f"data: {json.dumps({'chunk': error_msg, 'error': True})}\n\n"
+        finally:
+            yield "data: [DONE]\n\n"
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
+def _llm_error_message(exc: Exception) -> str:
+    msg = str(exc)
+    if "Connection refused" in msg or "ConnectError" in msg or "connect" in msg.lower():
+        return (
+            "⚠️ No se pudo conectar al modelo de IA. "
+            "Verifica que Ollama esté corriendo en tu máquina y que el modelo esté descargado "
+            "(`ollama pull llama3.2`). "
+            "Si prefieres usar Groq, cambia LLM_PROVIDER=groq en el .env de infra."
+        )
+    return f"⚠️ Error al generar respuesta: {msg}"
