@@ -10,12 +10,7 @@ class Settings(BaseSettings):
     # ── LLM ──────────────────────────────────────────────────────────────────
     # Opciones: ollama | groq | openai | anthropic
     LLM_PROVIDER: str = "ollama"
-    LLM_MODEL: Optional[str] = None  # vacío = usa el default del proveedor
-
-    # ── Embeddings ───────────────────────────────────────────────────────────
-    # Opciones: ollama | openai
-    EMBEDDING_PROVIDER: str = "ollama"
-    EMBEDDING_MODEL: Optional[str] = None
+    LLM_MODEL: Optional[str] = None
 
     # ── Credenciales de proveedores ───────────────────────────────────────────
     ANTHROPIC_API_KEY: str = ""
@@ -25,10 +20,8 @@ class Settings(BaseSettings):
     # ── Ollama (local) ────────────────────────────────────────────────────────
     OLLAMA_BASE_URL: str = "http://localhost:11434"
 
-    # ── ChromaDB ─────────────────────────────────────────────────────────────
-    CHROMA_HOST: str = "localhost"
-    CHROMA_PORT: int = 8004
-    CHROMA_COLLECTION: str = "methodology_guide"
+    # ── Docs service ─────────────────────────────────────────────────────────
+    DOCS_SERVICE_URL: str = "http://localhost:8003"
 
     class Config:
         env_file = ".env"

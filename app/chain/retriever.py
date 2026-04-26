@@ -1,43 +1,38 @@
 import logging
 from typing import List
 
-import chromadb
-from langchain_chroma import Chroma
-from langchain_core.retrievers import BaseRetriever
-from langchain_core.documents import Document
+import httpx
 from langchain_core.callbacks.manager import CallbackManagerForRetrieverRun
+from langchain_core.documents import Document
+from langchain_core.retrievers import BaseRetriever
 
 from app.core.config import settings
-from app.llm.providers import get_embeddings
 
 logger = logging.getLogger(__name__)
 
 
-class _NullRetriever(BaseRetriever):
-    """Fallback cuando ChromaDB no está disponible: devuelve siempre vacío."""
+class DocsServiceRetriever(BaseRetriever):
+    docs_url: str
+    k: int = 4
 
     def _get_relevant_documents(
         self, query: str, *, run_manager: CallbackManagerForRetrieverRun
     ) -> List[Document]:
-        return []
+        try:
+            resp = httpx.get(
+                f"{self.docs_url}/methodology/search",
+                params={"q": query, "k": self.k},
+                timeout=5.0,
+            )
+            resp.raise_for_status()
+            return [
+                Document(page_content=c["content"], metadata={"source": c["source"]})
+                for c in resp.json()
+            ]
+        except Exception as exc:
+            logger.warning("Docs service unavailable (%s). Continuing without context.", exc)
+            return []
 
 
-def get_retriever() -> BaseRetriever:
-    try:
-        chroma_client = chromadb.HttpClient(
-            host=settings.CHROMA_HOST,
-            port=settings.CHROMA_PORT,
-        )
-        vectorstore = Chroma(
-            client=chroma_client,
-            collection_name=settings.CHROMA_COLLECTION,
-            embedding_function=get_embeddings(),
-        )
-        return vectorstore.as_retriever(search_kwargs={"k": 4})
-    except Exception as exc:
-        logger.warning(
-            "ChromaDB no disponible en %s:%s (%s). "
-            "El chat funcionará sin contexto de documentos.",
-            settings.CHROMA_HOST, settings.CHROMA_PORT, exc,
-        )
-        return _NullRetriever()
+def get_retriever() -> DocsServiceRetriever:
+    return DocsServiceRetriever(docs_url=settings.DOCS_SERVICE_URL, k=4)
