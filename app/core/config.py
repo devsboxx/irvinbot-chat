@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # ── ChromaDB ─────────────────────────────────────────────────────────────
     CHROMA_HOST: str = "localhost"
     CHROMA_PORT: int = 8004
-    CHROMA_COLLECTION: str = "thesis_docs"
+    CHROMA_COLLECTION: str = "methodology_guide"
 
     class Config:
         env_file = ".env"

@@ -11,7 +11,7 @@ from app.llm.providers import get_llm
 
 def _format_docs(docs: List[Document]) -> str:
     if not docs:
-        return "No hay documentos cargados."
+        return "No hay guía metodológica disponible en la base de conocimiento."
     return "\n\n".join(
         f"[Fuente: {doc.metadata.get('source', 'desconocido')}]\n{doc.page_content}"
         for doc in docs

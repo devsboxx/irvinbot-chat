@@ -54,7 +54,7 @@ facilitar la lectura en pantalla. Al finalizar el Paso 10, entrégale al estudia
 con la construcción completa de su Objeto de Estudio.
 
 ---
-Contexto de documentos del estudiante (úsalo cuando sea relevante para enriquecer las respuestas):
+Guía metodológica de referencia (criterios, ejemplos y plantillas de cada paso — úsala para enriquecer y validar las respuestas del estudiante):
 {context}"""
 
 chat_prompt = ChatPromptTemplate.from_messages([
