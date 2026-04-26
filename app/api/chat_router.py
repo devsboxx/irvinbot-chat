@@ -85,12 +85,18 @@ async def stream_message(
 
 
 def _llm_error_message(exc: Exception) -> str:
+    from app.core.config import settings
     msg = str(exc)
+    provider = settings.LLM_PROVIDER.lower()
     if "Connection refused" in msg or "ConnectError" in msg or "connect" in msg.lower():
-        return (
-            "⚠️ No se pudo conectar al modelo de IA. "
-            "Verifica que Ollama esté corriendo en tu máquina y que el modelo esté descargado "
-            "(`ollama pull llama3.2`). "
-            "Si prefieres usar Groq, cambia LLM_PROVIDER=groq en el .env de infra."
-        )
+        if provider == "ollama":
+            return (
+                "⚠️ No se pudo conectar al modelo de IA. "
+                "Verifica que Ollama esté corriendo en tu máquina y que el modelo esté descargado "
+                "(`ollama pull llama3.2`). "
+                "Si prefieres usar Groq, cambia LLM_PROVIDER=groq en el .env de infra."
+            )
+        return f"⚠️ No se pudo conectar al proveedor de IA ({provider}). Verifica la API key y la conexión a internet."
+    if "api_key" in msg.lower() or "authentication" in msg.lower() or "401" in msg:
+        return f"⚠️ Error de autenticación con {provider}. Verifica que {provider.upper()}_API_KEY sea válida en el .env."
     return f"⚠️ Error al generar respuesta: {msg}"
