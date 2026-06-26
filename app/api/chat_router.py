@@ -10,6 +10,7 @@ from app.schemas.chat import (
     SessionCreate, SessionOut, MessageOut,
     SendMessageRequest, SendMessageResponse,
 )
+from app.schemas.thesis import ObjetoDeEstudio
 from app.services import chat_service
 
 router = APIRouter()
@@ -62,6 +63,17 @@ async def send_message(
     db: Session = Depends(get_db),
 ):
     return await chat_service.send_message(db, session_id, user_id, payload.message)
+
+
+@router.post("/sessions/{session_id}/objeto-de-estudio", response_model=ObjetoDeEstudio)
+async def extract_objeto(
+    session_id: str,
+    user_id: str = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Extrae el Objeto de Estudio estructurado (10 pasos) de la conversación,
+    para luego generar la tesis con los endpoints /thesis."""
+    return await chat_service.extract_objeto(db, session_id, user_id)
 
 
 @router.post("/sessions/{session_id}/stream")

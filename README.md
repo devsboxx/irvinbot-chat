@@ -126,7 +126,51 @@ Todos requieren header `Authorization: Bearer <access_token>`.
 | `DELETE` | `/chat/sessions/{id}` | Elimina sesión |
 | `POST` | `/chat/sessions/{id}/message` | Envía mensaje, espera respuesta completa |
 | `POST` | `/chat/sessions/{id}/stream` | Envía mensaje, respuesta en SSE streaming |
+| `POST` | `/chat/sessions/{id}/objeto-de-estudio` | Extrae el Objeto de Estudio estructurado (10 pasos) de la conversación |
+| `GET` | `/thesis/sections` | Lista las secciones generables (público) |
+| `POST` | `/thesis/generate` | Genera la tesis completa (Resumen, Introducción, Cap. I, II, III) |
+| `POST` | `/thesis/sections/{key}` | Genera una sola sección |
+| `POST` | `/thesis/sections/{key}/stream` | Genera una sección en SSE streaming |
 | `GET` | `/health` | Health check |
+
+### Generación de tesis (a partir del Modelo de los 10 Pasos)
+
+Flujo completo: al terminar los 10 pasos en el chat, `POST /chat/sessions/{id}/objeto-de-estudio`
+**extrae** (con `with_structured_output`) el Objeto de Estudio estructurado desde la
+conversación (`app/chain/thesis_extract.py`). Ese objeto se envía a los endpoints
+`/thesis/*` para **redactar** la tesis siguiendo los *Lineamientos para Elaborar
+Trabajos de Grado* de la UNEG (estructura, APA-UPEL) y la estructura de una tesis
+de ejemplo aprobada. La "base" de redacción vive en `app/chain/thesis_prompts.py`
+(un prompt enfocado por sección). El frontend orquesta extraer → revisar → generar
+por streaming → exportar a PDF.
+
+Secciones (`key`): `resumen`, `introduccion`, `capitulo_1`, `capitulo_2`, `capitulo_3`.
+
+```bash
+curl -X POST http://localhost:8002/thesis/sections/capitulo_1 \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "objeto_de_estudio": {
+      "coordenadas": "Alcaldía del Municipio Libertador, Caracas, 2024-2025",
+      "tematicas": ["Gestión pública", "TIC"],
+      "hechos": ["Trámites en papel con 15 días de espera"],
+      "sintomas": ["Acumulación de expedientes"],
+      "causas": ["Ausencia de sistema digital"],
+      "consecuencias": ["Pérdida de ingresos"],
+      "pronostico": "Colapso administrativo para 2027",
+      "control_pronostico": "Diseñar una plataforma digital de trámites",
+      "pregunta_general": "¿De qué manera la digitalización incide en la eficiencia?",
+      "preguntas_especificas": ["¿Cuál es la situación actual?"],
+      "titulo": "Gestión documental digital en la Alcaldía del Municipio Libertador, 2024-2025"
+    },
+    "datos": {"autores": ["Ana Pérez"], "tutor": "MSc. Roca", "anio": "2025"}
+  }'
+```
+
+> Los antecedentes, citas y artículos legales generados llevan una nota
+> `⚠️ Verificar y sustituir por fuentes reales` para no incurrir en plagio
+> (los lineamientos UNEG lo penalizan con la no aprobación del trabajo).
 
 ### Ejemplo: enviar mensaje
 ```bash

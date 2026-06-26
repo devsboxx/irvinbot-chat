@@ -1,3 +1,7 @@
+import os
+# Usa SQLite para el create_all de import (no requiere Postgres en CI/local).
+os.environ.setdefault("DATABASE_URL", "sqlite:///./test_chat.db")
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -7,6 +11,7 @@ from unittest.mock import patch, AsyncMock
 from main import app
 from app.core.database import Base, get_db
 from app.core.security import get_user_id_from_token
+from app.api import chat_router
 
 SQLALCHEMY_TEST_URL = "sqlite:///./test_chat.db"
 engine = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
@@ -29,7 +34,11 @@ def override_current_user():
 
 
 app.dependency_overrides[get_db] = override_get_db
+# La dependencia de auth en los routers es `current_user` (envuelve a
+# get_user_id_from_token); sobreescribir esa es lo que surte efecto.
+app.dependency_overrides[chat_router.current_user] = override_current_user
 app.dependency_overrides[get_user_id_from_token] = override_current_user
+Base.metadata.drop_all(bind=engine)   # arranca limpio aunque queden archivos previos
 Base.metadata.create_all(bind=engine)
 client = TestClient(app)
 

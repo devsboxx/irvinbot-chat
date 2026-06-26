@@ -5,8 +5,10 @@ import uuid
 
 from app.models.chat import ChatSession, Message
 from app.schemas.chat import SessionCreate, SessionOut, MessageOut, SendMessageResponse
+from app.schemas.thesis import ObjetoDeEstudio
 from app.chain import memory as mem
 from app.chain import pipeline
+from app.chain import thesis_extract
 from app.chain.retriever import get_retriever
 
 
@@ -75,6 +77,19 @@ async def stream_message(
     answer = "".join(collected)
     _save_messages(db, session.id, question, answer)
     _update_session_title(db, session, question)
+
+
+async def extract_objeto(db: Session, session_id: str, user_id: str) -> ObjetoDeEstudio:
+    """Extrae el Objeto de Estudio estructurado a partir de la conversación
+    del Modelo de los 10 Pasos. Es el puente chat -> generación de tesis."""
+    session = _get_owned_session(db, session_id, user_id)
+    history = mem.load_history(db, session.id)
+    if not history:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La conversación está vacía; no hay objeto de estudio que extraer.",
+        )
+    return await thesis_extract.extract_objeto(history)
 
 
 # ── private helpers ──────────────────────────────────────────────────────────
